@@ -2,8 +2,6 @@ package main
 
 import (
 	"container/list"
-	"encoding/json"
-	"fmt"
 )
 
 type LRUCache interface {
@@ -53,7 +51,7 @@ func (c *lruCache) Get(key string) (string, bool) {
 	}
 
 	c.list.MoveToFront(item)
-	val := item.Value.(cacheItem)
+	val := item.Value.(*cacheItem)
 
 	return val.value, true
 }
@@ -79,77 +77,8 @@ func (c *lruCache) evict() {
 	backElement := c.list.Back()
 	
 	if backElement != nil {
-		item := backElement.Value.(string)
-		delete(c.items, item)
+		item := backElement.Value.(*cacheItem)
+		delete(c.items, item.key)
 		c.list.Remove(backElement)
 	}
-}
-
-func main() {
-
-	// list.PushFront(8)
-	// fmt.Println(list.PushFront(8))
-
-	// fmt.Println(list.PushBack(1))
-	// fmt.Println(list.PushBack(4))
-
-	// cache := NewLRUCache(4)
-	// fmt.Println("===============1")
-	// cache.Add("a", "11")
-	// fmt.Printf("cache %v\ncapacity %d\ntail %v\ntail_next %v\ntail_prev %v\nhead %v\n",
-	// 	cache.cache,
-	// 	cache.capacity,
-	// 	cache.tail,
-	// 	cache.tail.next,
-	// 	cache.tail.prev,
-	// 	cache.head)
-
-	// fmt.Println("===============2")
-	// cache.Add("b", "22")
-	// fmt.Printf("cache %v\ncapacity %d\ntail %v\ntail_next %v\ntail_prev %v\nhead %v\n",
-	// 	cache.cache,
-	// 	cache.capacity,
-	// 	cache.tail,
-	// 	cache.tail.next,
-	// 	cache.tail.prev,
-	// 	cache.head)
-
-	// fmt.Println("===============3")
-	// cache.Add("c", "33")
-	// fmt.Printf("cache %v\ncapacity %d\ntail %v\ntail_next %v\ntail_prev %v\nhead %v\n",
-	// 	cache.cache,
-	// 	cache.capacity,
-	// 	cache.tail,
-	// 	cache.tail.next,
-	// 	cache.tail.prev,
-	// 	cache.head)
-
-	// fmt.Println("===============4")
-	// cache.Add("d", "44")
-	// fmt.Printf("cache %v\ncapacity %d\ntail %v\ntail_next %v\ntail_prev %v\nhead %v\n",
-	// 	cache.cache,
-	// 	cache.capacity,
-	// 	cache.tail,
-	// 	cache.tail.next,
-	// 	cache.tail.prev,
-	// 	cache.head)
-
-	// fmt.Println("===============5")
-	// cache.Add("e", "55")
-	// fmt.Printf("cache %v\ncapacity %d\ntail %v\ntail_next %v\ntail_prev %v\nhead %v\n",
-	// 	cache.cache,
-	// 	cache.capacity,
-	// 	cache.tail,
-	// 	cache.tail.next,
-	// 	cache.tail.prev,
-	// 	cache.head)
-}
-
-func PrintJson(v interface{}) {
-	beautifulJsonByte, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		fmt.Println(err)
-		panic(err)
-	}
-	fmt.Println(string(beautifulJsonByte))
 }
