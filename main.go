@@ -70,9 +70,6 @@ func (c *lruCache) Remove(key string) bool {
 }
 
 func (c *lruCache) evict() {
-	if c.list.Len() == 0 {
-		return
-	}
 	
 	backElement := c.list.Back()
 	
