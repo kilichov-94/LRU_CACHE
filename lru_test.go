@@ -2,80 +2,107 @@ package main
 
 import (
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
-func Test_AddAndGet(t *testing.T) {
+func TestAdd(t *testing.T) {
 	cache := NewLRUCache(2)
 
-	added := cache.Add("key1", "value1")
-	require.True(t, added, "Expected true")
+	// Add an element
+	if !cache.Add("key1", "value1") {
+		t.Errorf("Add() failed for key1")
+	}
 
-	value, found := cache.Get("key1")
-	require.True(t, found, "Expected true")
-	require.Equal(t, "value1", value, "Expected value1")
+	// Add another element
+	if !cache.Add("key2", "value2") {
+		t.Errorf("Add() failed for key2")
+	}
 
-	added = cache.Add("key1", "newValue")
-	require.False(t, added, "Expected false")
+	// Adding duplicate key should return false
+	if cache.Add("key1", "value3") {
+		t.Errorf("Add() should return false for duplicate key")
+	}
+
+	// Adding a third element should evict the least recently used (key1)
+	if !cache.Add("key3", "value3") {
+		t.Errorf("Add() failed for key3")
+	}
+
+	if _, ok := cache.Get("key1"); ok {
+		t.Errorf("key1 should have been evicted")
+	}
 }
 
-func Test_Evict(t *testing.T) {
+func TestGet(t *testing.T) {
 	cache := NewLRUCache(2)
 
-	require.True(t, cache.Add("key1", "value1"), "Expected true")
-	require.True(t, cache.Add("key2", "value2"), "Expected true")
+	cache.Add("key1", "value1")
+	cache.Add("key2", "value2")
 
-	require.True(t, cache.Add("key3", "value3"), "Expected true")
+	// Get an existing element
+	val, ok := cache.Get("key1")
+	if !ok || val != "value1" {
+		t.Errorf("Get() failed for key1: got %v, expected value1", val)
+	}
 
-	_, found := cache.Get("key1")
-	require.False(t, found, "Expected key1 to be evicted")
+	// Accessing key1 should make it most recently used
+	cache.Add("key3", "value3") // This should evict key2
+	if _, ok := cache.Get("key2"); ok {
+		t.Errorf("key2 should have been evicted")
+	}
 
-	value, found := cache.Get("key2")
-	require.True(t, found, "Expected key2 to still be in cache")
-	require.Equal(t, "value2", value, "Expected value of key2 to be 'value2'")
-
-	value, found = cache.Get("key3")
-	require.True(t, found, "Expected key3 to still be in cache")
-	require.Equal(t, "value3", value, "Expected value of key3 to be 'value3'")
+	// Get a non-existing element
+	if _, ok := cache.Get("key4"); ok {
+		t.Errorf("Get() should return false for non-existing key")
+	}
 }
 
-func Test_Remove(t *testing.T) {
+func TestRemove(t *testing.T) {
 	cache := NewLRUCache(2)
 
-	require.True(t, cache.Add("key1", "value1"), "Expected true")
+	cache.Add("key1", "value1")
+	cache.Add("key2", "value2")
 
-	removed := cache.Remove("key1")
-	require.True(t, removed, "Expected true")
+	// Remove an existing element
+	if !cache.Remove("key1") {
+		t.Errorf("Remove() failed for key1")
+	}
 
-	_, found := cache.Get("key1")
-	require.False(t, found, "Expected key1 to be removed")
+	// Key1 should no longer exist
+	if _, ok := cache.Get("key1"); ok {
+		t.Errorf("key1 should not exist after removal")
+	}
 
-	removed = cache.Remove("key1")
-	require.False(t, removed, "Expected false")
-
+	// Remove a non-existing element
+	if cache.Remove("key3") {
+		t.Errorf("Remove() should return false for non-existing key")
+	}
 }
 
-func Test_UsageOrder(t *testing.T) {
-	cache := NewLRUCache(2)
+func TestLRUBehavior(t *testing.T) {
+	cache := NewLRUCache(3)
 
-	require.True(t, cache.Add("key1", "value1"), "Expected true")
-	require.True(t, cache.Add("key2", "value2"), "Expected true")
+	cache.Add("key1", "value1")
+	cache.Add("key2", "value2")
+	cache.Add("key3", "value3")
 
-	value, found := cache.Get("key1")
-	require.True(t, found, "Expected key1 to still be in cache")
-	require.Equal(t, "value1", value, "Expected value of key1 to be 'value1'")
+	// Access key1 to make it most recently used
+	cache.Get("key1")
 
-	require.True(t, cache.Add("key3", "value3"), "Expected true")
+	// Adding another element should evict the least recently used (key2)
+	cache.Add("key4", "value4")
 
-	_, found = cache.Get("key2")
-	require.False(t, found, "Expected key2 to be evicted")
+	if _, ok := cache.Get("key2"); ok {
+		t.Errorf("key2 should have been evicted")
+	}
 
-	value, found = cache.Get("key1")
-	require.True(t, found, "Expected key1 to still be in cache")
-	require.Equal(t, "value1", value, "Expected value of key1 to be 'value1'")
-
-	value, found = cache.Get("key3")
-	require.True(t, found, "Expected key3 to still be in cache")
-	require.Equal(t, "value3", value, "Expected value of key3 to be 'value3'")
+	// key1, key3, and key4 should still be in the cache
+	if _, ok := cache.Get("key1"); !ok {
+		t.Errorf("key1 should still be in the cache")
+	}
+	if _, ok := cache.Get("key3"); !ok {
+		t.Errorf("key3 should still be in the cache")
+	}
+	if _, ok := cache.Get("key4"); !ok {
+		t.Errorf("key4 should still be in the cache")
+	}
 }

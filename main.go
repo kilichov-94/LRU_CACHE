@@ -1,81 +1,178 @@
 package main
 
-import (
-	"container/list"
-)
+import "fmt"
 
-type LRUCache interface {
-	Add(key, value string) bool
-	Get(key string) (value string, ok bool)
-	Remove(key string) (ok bool)
-}
-
-type cacheItem struct {
-	key   string
-	value string
+type Node struct {
+	key, value string
+	prev, next *Node
 }
 
 type lruCache struct {
 	capacity int
-	items    map[string]*list.Element
-	list     *list.List
+	data     map[string]*Node
+	head     *Node
+	tail     *Node
 }
 
-func NewLRUCache(n int) LRUCache {
+type LRUCache interface {
+	Add(key, value string) bool
+
+	Get(key string) (value string, ok bool)
+
+	Remove(key string) (ok bool)
+}
+
+func NewLRUCache(n int) *lruCache {
+
 	return &lruCache{
 		capacity: n,
-		items:    make(map[string]*list.Element),
-		list:     list.New(),
+		data:     make(map[string]*Node),
 	}
 }
 
-func (c *lruCache) Add(key, value string) bool {
-	if _, exists := c.items[key]; exists {
+func (l *lruCache) Add(key, value string) bool {
+	if _, ok := l.data[key]; ok {
 		return false
 	}
 
-	if c.list.Len() >= c.capacity {
-		c.evict()
+	node := &Node{key: key, value: value}
+
+	if len(l.data) >= l.capacity {
+		tail := l.tail
+		l.RemoveNode(l.tail)
+		fmt.Println("tail==", tail.key)
+		delete(l.data, tail.key)
 	}
 
-	item := &cacheItem{key: key, value: value}
-	element := c.list.PushFront(item)
-	c.items[key] = element
+	l.data[key] = node
+	l.AddNode(node)
+	fmt.Println("head", l.head.key, "tail", l.tail.key)
 	return true
 }
 
-func (c *lruCache) Get(key string) (string, bool) {
-	item, exists := c.items[key]
-	if !exists {
+func (l *lruCache) Get(key string) (string, bool) {
+
+	val, ok := l.data[key]
+	if !ok {
 		return "", false
 	}
+	l.moveToFront(val)
 
-	c.list.MoveToFront(item)
-	val := item.Value.(*cacheItem)
-
+	fmt.Println("head", l.head.key, "tail", l.tail.key)
 	return val.value, true
 }
 
-func (c *lruCache) Remove(key string) bool {
-	item, exists := c.items[key]
-	if !exists {
+func (l *lruCache) moveToFront(node *Node) {
+	l.RemoveNode(node)
+	l.AddNode(node)
+}
+
+func (l *lruCache) Remove(key string) bool {
+	val, ok := l.data[key]
+	if !ok {
+		fmt.Println("head", l.head.key, "tail", l.tail.key)
 		return false
 	}
+	fmt.Println("head", l.head.key, "tail", l.tail.key)
 
-	c.list.Remove(item)
-	
-	delete(c.items, key)
-	
+	delete(l.data, key)
+	l.RemoveNode(val)
+
 	return true
 }
 
-func (c *lruCache) evict() {
-	
-	backElement := c.list.Back()
-	
-	if backElement != nil {
-		item := backElement.Value.(*cacheItem)
-		delete(c.items, item.key)
-		c.list.Remove(backElement)
+func (l *lruCache) RemoveNode(node *Node) {
+
+	if node.prev != nil {
+		node.prev.next = node.next
+	} else {
+		l.head = node.next
 	}
+
+	if node.next != nil {
+		node.next.prev = node.prev
+	} else {
+		l.tail = node.prev
+	}
+}
+
+func (l *lruCache) AddNode(node *Node) {
+
+	if l.head == nil {
+		l.head = node
+		l.tail = node
+		return
+	}
+
+	node.next = l.head
+	l.head.prev = node
+	l.head = node
+}
+
+func (l *lruCache) PrintListNode() {
+	current := l.head
+	for current != nil {
+		fmt.Print(current.key, " <-> ")
+		current = current.next
+	}
+	fmt.Println("nil")
+	fmt.Printf("len(l.data) %d , l.capacity %d \n", len(l.data), l.capacity)
+	fmt.Println(l.data)
+	fmt.Println("===============")
+}
+
+func main() {
+
+	lru := NewLRUCache(4)
+
+	lru.Add("A", "A_VAL")
+	// lru.PrintListNode()
+
+	lru.Add("B", "B_VAL")
+	// lru.PrintListNode()
+
+	lru.Add("C", "C_VAL")
+	// lru.PrintListNode()
+
+	lru.Add("D", "D_VAL")
+	lru.PrintListNode()
+
+	lru.Add("G", "G_VAL")
+	lru.PrintListNode()
+
+	lru.Add("H", "H_VAL")
+	lru.PrintListNode()
+
+	fmt.Println("========GET NODE============")
+
+	val, ok := lru.Get("C")
+	fmt.Println(val, ok)
+	lru.PrintListNode()
+
+	val2, ok2 := lru.Get("D")
+	fmt.Println(val2, ok2)
+	lru.PrintListNode()
+
+	lru.Add("M", "M_VAL")
+	lru.PrintListNode()
+
+	val3, ok3 := lru.Get("C")
+	fmt.Println(val3, ok3)
+	lru.PrintListNode()
+
+	fmt.Println("========REMOVE NODE============")
+	fmt.Println(lru.Remove("D"))
+	lru.PrintListNode()
+	fmt.Println(lru.Remove("C"))
+	lru.PrintListNode()
+
+}
+
+func PrintListNode(head *Node) {
+	current := head
+	for current != nil {
+		fmt.Print(current.key, " <-> ")
+		current = current.next
+	}
+	fmt.Println("nil")
 }
